@@ -8,6 +8,7 @@
 // The evaluation harness uses operator() to set initial conditions and to read
 // results; it never touches your internal storage. Keep this interface,
 // everything else is yours.
+
 class Grid {
 private:
   std::size_t rows_;
