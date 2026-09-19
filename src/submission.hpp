@@ -52,6 +52,7 @@ void apply_stencil(const Grid& old_grid, Grid& new_grid){
   std::size_t columns = old_grid.obtain_columns(); //j
   std::size_t rows = old_grid.obtain_rows(); //i
 
+  #pragma omp parallel for schedule(static)
   for (std::size_t i = 1; i < rows - 1; i++){
     const double* __restrict row_mid = old_grid.obtain_data() + i * columns;
     const double* __restrict row_up = old_grid.obtain_data() + (i - 1) * columns;
