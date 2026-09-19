@@ -59,11 +59,15 @@ void apply_stencil(const Grid& old_grid, Grid& new_grid){
     const double* __restrict row_down = old_grid.obtain_data() + (i + 1) * columns;
     double* __restrict out = new_grid.obtain_data() + i * columns;
 
+    //copy boundary columns
+    out[0] = row_mid[0];
+    out[columns - 1] = row_mid[columns - 1];
+
     #pragma omp simd
     for (std::size_t j = 1; j < columns - 1; j++){
       out[j] = 0.5 * row_mid[j] +
-                   0.125 * (row_down[j] + row_up[j] +
-                            row_mid[j-1] + row_mid[j+1]);
+             0.125 * (row_down[j] + row_up[j] +
+                     row_mid[j-1] + row_mid[j+1]);
     }
   }
 
@@ -71,8 +75,4 @@ void apply_stencil(const Grid& old_grid, Grid& new_grid){
   std::copy(old_grid.obtain_data(), old_grid.obtain_data() + columns, new_grid.obtain_data());
   std::copy(old_grid.obtain_data() + (rows-1) * columns, old_grid.obtain_data() + rows * columns, new_grid.obtain_data() + (rows-1) * columns);
 
-  for (std::size_t i = 1; i < rows-1; i++){
-    new_grid.obtain_data()[i * columns] = old_grid.obtain_data()[i * columns]; //copy over first column 
-    new_grid.obtain_data()[i * columns + columns - 1] = old_grid.obtain_data()[i * columns + columns - 1]; //copy over last column
-  }
 };
