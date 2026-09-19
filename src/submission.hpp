@@ -67,13 +67,12 @@ void apply_stencil(const Grid& old_grid, Grid& new_grid){
     }
   }
 
-
   //copy old rows to new rows
   std::copy(old_grid.obtain_data(), old_grid.obtain_data() + columns, new_grid.obtain_data());
   std::copy(old_grid.obtain_data() + (rows-1) * columns, old_grid.obtain_data() + rows * columns, new_grid.obtain_data() + (rows-1) * columns);
 
   for (std::size_t i = 1; i < rows-1; i++){
     new_grid.obtain_data()[i * columns] = old_grid.obtain_data()[i * columns]; //copy over first column 
-    new_grid.obtain_data()[i * columns + columns - 1] = old_grid.obtain_data()[i * columns] + columns - 1; //copy over last column
+    new_grid.obtain_data()[i * columns + columns - 1] = old_grid.obtain_data()[i * columns + columns - 1]; //copy over last column
   }
 };
