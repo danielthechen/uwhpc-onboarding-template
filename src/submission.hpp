@@ -1,13 +1,9 @@
 #pragma once
 
 #include <cstddef>
+#include <algorithm>
 #include <vector>
 
-// Starter Grid for the 2D heat-diffusion problem.
-//
-// The evaluation harness uses operator() to set initial conditions and to read
-// results; it never touches your internal storage. Keep this interface,
-// everything else is yours.
 class Grid {
 private:
   std::size_t rows_;
@@ -21,45 +17,46 @@ public:
     data_matrix = std::vector<double> (rows*cols, 0);
   }
 
+  // I chose 1D vector as it ensures data is contiguous for later optimization.
   double& operator()(std::size_t i, std::size_t j){
     return data_matrix[i * cols_ + j];
   }
-
   double operator()(std::size_t i, std::size_t j) const{
     return data_matrix[i * cols_ + j];
   }
+  // Alignment target of 64 bytes based on the evaluator's -march=x86-64-v3
+  // Hence I decided not to implement padding specifically for the benchmark because
+  // row width (1024 * 8 = 8192 bytes) is already multiple of 64, but this wouldn't hold for all grids.
 
   std::size_t obtain_columns() const{
     return cols_;
   }
-
   std::size_t obtain_rows() const{
     return rows_;
   }
 
+  // Implemented a pointer access to combat alias flags that prevent vectorization
   double* obtain_data() {
     return data_matrix.data();
   }
-
   const double* obtain_data() const {
     return data_matrix.data();
   }
 };
 
-// Apply the five-point stencil over all interior points, copying the boundary
-// values unchanged from old_grid to new_grid. Implement your solution here.
 void apply_stencil(const Grid& old_grid, Grid& new_grid){
-  std::size_t columns = old_grid.obtain_columns(); //j
-  std::size_t rows = old_grid.obtain_rows(); //i
+  std::size_t columns = old_grid.obtain_columns();
+  std::size_t rows = old_grid.obtain_rows();
 
-  #pragma omp parallel for schedule(static)
+  #pragma omp parallel for schedule(static) 
   for (std::size_t i = 1; i < rows - 1; i++){
     const double* __restrict row_mid = old_grid.obtain_data() + i * columns;
     const double* __restrict row_up = old_grid.obtain_data() + (i - 1) * columns;
     const double* __restrict row_down = old_grid.obtain_data() + (i + 1) * columns;
     double* __restrict out = new_grid.obtain_data() + i * columns;
+    //__restrict on each row for easier compiler vectorization
 
-    //copy boundary columns
+    //Take the chance to copy the boundary columns as well within the threaded loop
     out[0] = row_mid[0];
     out[columns - 1] = row_mid[columns - 1];
 
@@ -71,7 +68,6 @@ void apply_stencil(const Grid& old_grid, Grid& new_grid){
     }
   }
 
-  //copy old rows to new rows
   std::copy(old_grid.obtain_data(), old_grid.obtain_data() + columns, new_grid.obtain_data());
   std::copy(old_grid.obtain_data() + (rows-1) * columns, old_grid.obtain_data() + rows * columns, new_grid.obtain_data() + (rows-1) * columns);
 
