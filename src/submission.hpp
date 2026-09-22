@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <algorithm>
 #include <vector>
+#include <stdexcept>
 
 // Alignment target of 64 bytes based on the evaluator's -march=x86-64-v3
 static constexpr std::size_t alignment = 64;
@@ -33,9 +34,11 @@ public:
 
   // I chose 1D vector as it ensures data is contiguous for later optimization.
   double& operator()(std::size_t i, std::size_t j){
+    if ((i >= rows_) or (j >= cols_)) throw std::out_of_range("Grid operator (,) index out of range");
     return data_matrix[i * stride_ + j];
   }
   double operator()(std::size_t i, std::size_t j) const{
+    if ((i >= rows_) or (j >= cols_)) throw std::out_of_range("Grid operator (,) index out of range");
     return data_matrix[i * stride_ + j];
   }
 
@@ -64,9 +67,17 @@ void apply_stencil(const Grid& old_grid, Grid& new_grid){
   Grid::ConstView old_view = old_grid.view();
   Grid::View new_view = new_grid.view();
 
+  if ((old_view.rows != new_view.rows) or (old_view.cols != new_view.cols)){
+    throw std::invalid_argument("old_grid and new_grid dimensions differ :(");
+  }
+
   std::size_t columns = old_view.cols;
   std::size_t rows = old_view.rows;
   std::size_t stride = old_view.stride;
+
+  if ((rows == 0) or (columns == 0)){
+    return;
+  }
 
   #pragma omp parallel for schedule(static) 
   for (std::size_t i = 1; i < rows - 1; i++){
