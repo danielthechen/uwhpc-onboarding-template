@@ -39,37 +39,41 @@ public:
     return data_matrix[i * stride_ + j];
   }
 
-  std::size_t obtain_columns() const{
-    return cols_;
-  }
-  std::size_t obtain_rows() const{
-    return rows_;
+  // Implemented pointer access to combat alias flags that prevent vectorization
+  struct View {
+    double* data;
+    std::size_t rows, cols, stride;
+  };
+
+  struct ConstView {
+    const double* data;
+    std::size_t rows, cols, stride;
+  };
+
+  View view() {
+    return View{data_matrix.data(), rows_, cols_, stride_};
   }
 
-  std::size_t obtain_stride() const{
-    return stride_;
+  ConstView view() const {
+    return ConstView{data_matrix.data(), rows_, cols_, stride_};
   }
 
-  // Implemented a pointer access to combat alias flags that prevent vectorization
-  double* obtain_data() {
-    return data_matrix.data();
-  }
-  const double* obtain_data() const {
-    return data_matrix.data();
-  }
 };
 
 void apply_stencil(const Grid& old_grid, Grid& new_grid){
-  std::size_t columns = old_grid.obtain_columns();
-  std::size_t rows = old_grid.obtain_rows();
-  std::size_t stride = old_grid.obtain_stride();
+  Grid::ConstView old_view = old_grid.view();
+  Grid::View new_view = new_grid.view();
+
+  std::size_t columns = old_view.cols;
+  std::size_t rows = old_view.rows;
+  std::size_t stride = old_view.stride;
 
   #pragma omp parallel for schedule(static) 
   for (std::size_t i = 1; i < rows - 1; i++){
-    const double* __restrict row_mid = old_grid.obtain_data() + i * stride;
-    const double* __restrict row_up = old_grid.obtain_data() + (i - 1) * stride;
-    const double* __restrict row_down = old_grid.obtain_data() + (i + 1) * stride;
-    double* __restrict out = new_grid.obtain_data() + i * stride;
+    const double* __restrict row_mid = old_view.data + i * stride;
+    const double* __restrict row_up = old_view.data + (i - 1) * stride;
+    const double* __restrict row_down = old_view.data + (i + 1) * stride;
+    double* __restrict out = new_view.data + i * stride;
     //__restrict on each row for easier compiler vectorization
 
     //Take the chance to copy the boundary columns as well within the threaded loop
@@ -84,9 +88,9 @@ void apply_stencil(const Grid& old_grid, Grid& new_grid){
     }
   }
 
-  std::copy(old_grid.obtain_data(), old_grid.obtain_data() + columns, new_grid.obtain_data());
-  std::copy(old_grid.obtain_data() + (rows-1) * stride, 
-            old_grid.obtain_data() + (rows-1) * stride + columns, 
-            new_grid.obtain_data() + (rows-1) * stride);
+  std::copy(old_view.data, old_view.data + columns, new_view.data);
+  std::copy(old_view.data + (rows-1) * stride, 
+            old_view.data + (rows-1) * stride + columns, 
+            new_view.data + (rows-1) * stride);
 
 };
