@@ -119,10 +119,10 @@ void apply_stencil(const Grid& old_grid, Grid& new_grid){
 
   #pragma omp parallel for schedule(static) 
   for (std::size_t i = 1; i < rows - 1; i++){
-    const double* __restrict row_mid = static_cast<const double*>(__builtin_assume_aligned(old_view.data + i * stride, 64));
-    const double* __restrict row_up = static_cast<const double*>(__builtin_assume_aligned(old_view.data + (i - 1) * stride, 64));
-    const double* __restrict row_down = static_cast<const double*>(__builtin_assume_aligned(old_view.data + (i + 1) * stride, 64));
-    double* __restrict out = static_cast<double*>(__builtin_assume_aligned(new_view.data + i * stride, 64));
+    const double* __restrict row_mid = old_view.data + i * stride;
+    const double* __restrict row_up = old_view.data + (i - 1) * stride;
+    const double* __restrict row_down = old_view.data + (i + 1) * stride;
+    double* __restrict out = new_view.data + i * stride;
     //__restrict on each row for easier compiler vectorization
 
     //Take the chance to copy the boundary columns as well within the threaded loop
