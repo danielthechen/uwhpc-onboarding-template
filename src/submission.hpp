@@ -4,16 +4,51 @@
 #include <algorithm>
 #include <vector>
 #include <stdexcept>
+#include <new>
 
 // Alignment target of 64 bytes based on the evaluator's -march=x86-64-v3
 static constexpr std::size_t alignment = 64;
+
+template <typename T, std::size_t Alignment>
+// Struct instead of Class as everything should be public anyways
+struct AlignedAllocator{
+  using value_type = T;
+
+  template <typename U>
+  struct rebind{
+    using other = AlignedAllocator<U, Alignment>;
+  };
+  
+  AlignedAllocator() noexcept = default;
+  template <typename U>
+  AlignedAllocator(const AlignedAllocator<U, Alignment>&) noexcept {}
+
+  T* allocate (std::size_t n){
+    if (n == 0) {
+      return nullptr;
+    }
+    return static_cast<T*>(::operator new(n * sizeof(T), std::align_val_t{Alignment}));
+  }
+  void deallocate(T* p, std::size_t) noexcept{
+    ::operator delete(p, std::align_val_t{Alignment});
+  }
+
+  template <typename U> bool operator == (const AlignedAllocator<U, Alignment>&) const noexcept{
+    return true;
+  }
+
+  template <typename U> bool operator != (const AlignedAllocator<U, Alignment>&) const noexcept{
+    return false;
+  }
+
+};
 
 class Grid {
 private:
   std::size_t rows_;
   std::size_t cols_;
   std::size_t stride_;
-  std::vector<double> data_matrix;
+  std::vector<double, AlignedAllocator<double, alignment>> data_matrix;
 
   static std::size_t calculate_stride(std::size_t columns){
     constexpr std::size_t grids_per_row = alignment / sizeof(double);
