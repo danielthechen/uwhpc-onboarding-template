@@ -9,17 +9,21 @@
 // Alignment target of 64 bytes based on the evaluator's -march=x86-64-v3
 static constexpr std::size_t alignment = 64;
 
+// I added an allocator to ensure alignment for the vector grid
+// I used Struct instead of Class as everything should be public anyways
 template <typename T, std::size_t Alignment>
-// Struct instead of Class as everything should be public anyways
 struct AlignedAllocator{
   using value_type = T;
 
-  template <typename U>
+  // Rebind is needed here as Alignment is a non-type template param, requiring extra handling
+  template <typename alternativeType>
   struct rebind{
-    using other = AlignedAllocator<U, Alignment>;
+    using other = AlignedAllocator<alternativeType, Alignment>;
   };
   
   AlignedAllocator() noexcept = default;
+
+  // Standard function names that are called by vector allocation
   template <typename U>
   AlignedAllocator(const AlignedAllocator<U, Alignment>&) noexcept {}
 
@@ -36,11 +40,9 @@ struct AlignedAllocator{
   template <typename U> bool operator == (const AlignedAllocator<U, Alignment>&) const noexcept{
     return true;
   }
-
   template <typename U> bool operator != (const AlignedAllocator<U, Alignment>&) const noexcept{
     return false;
   }
-
 };
 
 class Grid {
