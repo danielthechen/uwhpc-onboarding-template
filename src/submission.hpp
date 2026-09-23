@@ -129,6 +129,8 @@ void apply_stencil(const Grid& old_grid, Grid& new_grid){
     out[0] = row_mid[0];
     out[columns - 1] = row_mid[columns - 1];
 
+    // Although loop index j start at 1, which may cause misalignment,
+    // compiler should be able to apply peeling to start vectorization at an aligned offset itself.
     #pragma omp simd
     for (std::size_t j = 1; j < columns - 1; j++){
       out[j] = 0.5 * row_mid[j] +
