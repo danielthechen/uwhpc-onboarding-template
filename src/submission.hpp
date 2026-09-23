@@ -25,13 +25,14 @@ private:
   }
 
 public:
-  Grid(std::size_t rows, std::size_t cols){
-    rows_ = rows;
-    cols_ = cols;
-    stride_ = (calculate_stride(cols));
-    data_matrix = std::vector<double> (rows * stride_, 0);
-  }
-
+  //Switched to member initialization to prevent double allocation
+  Grid(std::size_t rows, std::size_t cols): 
+    rows_(rows),
+    cols_(cols),
+    stride_(calculate_stride(cols)),
+    data_matrix(rows * stride_, 0.0)
+    {}
+  
   // I chose 1D vector as it ensures data is contiguous for later optimization.
   double& operator()(std::size_t i, std::size_t j){
     if ((i >= rows_) or (j >= cols_)) throw std::out_of_range("Grid operator (,) index out of range");
