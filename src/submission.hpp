@@ -113,7 +113,14 @@ void apply_stencil(const Grid& old_grid, Grid& new_grid){
   std::size_t rows = old_view.rows;
   std::size_t stride = old_view.stride;
 
+  // Small grid handling! Don't need complex logic if all grids are boundary grids
   if ((rows == 0) or (columns == 0)){
+    return;
+  }
+  if ((rows < 3) or (columns < 3)){
+    for (std::size_t i = 0; i < rows; ++i){
+      std::copy(old_view.data + i * stride, old_view.data + i * stride + columns, new_view.data + i * stride);
+    }
     return;
   }
 
@@ -131,7 +138,7 @@ void apply_stencil(const Grid& old_grid, Grid& new_grid){
 
     // Although loop index j start at 1, which may cause misalignment,
     // compiler should be able to apply peeling to start vectorization at an aligned offset itself.
-    #pragma omp simd
+    #pragma omp simd aligned(row_mid, row_up, row_down, out: 64)
     for (std::size_t j = 1; j < columns - 1; j++){
       out[j] = 0.5 * row_mid[j] +
              0.125 * (row_down[j] + row_up[j] +
