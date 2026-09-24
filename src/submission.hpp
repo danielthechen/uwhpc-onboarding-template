@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstring>
 #include <algorithm>
 #include <vector>
 #include <stdexcept>
@@ -119,7 +120,9 @@ void apply_stencil(const Grid& old_grid, Grid& new_grid){
   }
   if ((rows < 3) or (columns < 3)){
     for (std::size_t i = 0; i < rows; ++i){
-      std::copy(old_view.data + i * stride, old_view.data + i * stride + columns, new_view.data + i * stride);
+      std::memcpy(new_view.data + i * stride, 
+                  old_view.data + i * stride, 
+                  columns * sizeof(double));
     }
     return;
   }
@@ -146,9 +149,10 @@ void apply_stencil(const Grid& old_grid, Grid& new_grid){
     }
   }
 
-  std::copy(old_view.data, old_view.data + columns, new_view.data);
-  std::copy(old_view.data + (rows-1) * stride, 
-            old_view.data + (rows-1) * stride + columns, 
-            new_view.data + (rows-1) * stride);
+  // Use std::memcpy instead of std::copy, as it guarantees non-overlapping memory
+  std::memcpy(new_view.data, old_view.data, columns * sizeof(double));
+  std::memcpy(new_view.data + (rows-1) * stride, 
+              old_view.data + (rows-1) * stride, 
+              columns * sizeof(double));
 
 };
