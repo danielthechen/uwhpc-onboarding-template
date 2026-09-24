@@ -103,6 +103,13 @@ public:
 };
 
 void apply_stencil(const Grid& old_grid, Grid& new_grid){
+  // although this is expensive, it's only for a  one-time edge case
+  if (&old_grid == &new_grid){
+    Grid old_grid_snapshot = old_grid;
+    apply_stencil(old_grid_snapshot, new_grid);
+    return;
+  }
+
   Grid::ConstView old_view = old_grid.view();
   Grid::View new_view = new_grid.view();
 
