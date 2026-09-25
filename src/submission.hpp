@@ -81,7 +81,7 @@ private:
   }
 
 public:
-  //Switched to member initialization to prevent double allocation
+  // Switched to member initialization to prevent double allocation
   Grid(std::size_t rows, std::size_t cols): 
     rows_(rows),
     cols_(cols),
@@ -99,12 +99,10 @@ public:
     return data_matrix[i * stride_ + j];
   }
 
-  // Implemented pointer access to combat alias flags that prevent vectorization
   struct View {
     double* data;
     std::size_t rows, cols, stride;
   };
-
   struct ConstView {
     const double* data;
     std::size_t rows, cols, stride;
@@ -113,7 +111,6 @@ public:
   View view() {
     return View{data_matrix.data(), rows_, cols_, stride_};
   }
-
   ConstView view() const {
     return ConstView{data_matrix.data(), rows_, cols_, stride_};
   }
@@ -165,8 +162,8 @@ inline void apply_stencil(const Grid& old_grid, Grid& new_grid){
     out[0] = row_mid[0];
     out[columns - 1] = row_mid[columns - 1];
 
-    // Although loop index j starts at 1, which may cause misalignment,
-    // compiler should be able to apply peeling to start vectorization at an aligned offset itself.
+    // j starts at 1, so first element may not be SIMD aligned,
+    // the compiler can apply peeling or unaligned vector access as required.
     #pragma omp simd
     for (std::size_t j = 1; j < columns - 1; j++){
       out[j] = 0.5 * row_mid[j] +
@@ -175,10 +172,10 @@ inline void apply_stencil(const Grid& old_grid, Grid& new_grid){
     }
   }
 
-  // Use std::memcpy instead of std::copy, as it guarantees non-overlapping memory
+  // Use std::memcpy for contiguous non-overlapping ranges, more explicit than std::copy
   std::memcpy(new_view.data, old_view.data, columns * sizeof(double));
   std::memcpy(new_view.data + (rows-1) * stride, 
               old_view.data + (rows-1) * stride, 
               columns * sizeof(double));
 
-};
+}
