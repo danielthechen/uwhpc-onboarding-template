@@ -142,6 +142,7 @@ inline void apply_stencil(const Grid& old_grid, Grid& new_grid){
     return;
   }
   if ((rows < 3) or (columns < 3)){
+    #pragma omp parallel for schedule(static)
     for (std::size_t i = 0; i < rows; ++i){
       std::memcpy(new_view.data + i * stride, 
                   old_view.data + i * stride, 
