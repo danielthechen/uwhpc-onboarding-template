@@ -5,9 +5,6 @@
 #include <vector>
 #include <stdexcept>
 #include <new>
-
-// Alignment target of 64 bytes based on the evaluator's -march=x86-64-v3
-static constexpr std::size_t alignment = 64;
 #include <limits>
 
 // I added an allocator to ensure alignment for the vector grid
@@ -52,13 +49,16 @@ struct AlignedAllocator{
 
 class Grid {
 private:
+  // 64 byte alignment for cache-line alignment and SIMD access
+  // kAlignment is kept private as it's specific to only Grid's layout
+  static constexpr std::size_t kAlignment = 64;
   std::size_t rows_;
   std::size_t cols_;
   std::size_t stride_;
-  std::vector<double, AlignedAllocator<double, alignment>> data_matrix;
+  std::vector<double, AlignedAllocator<double, kAlignment>> data_matrix;
 
   static std::size_t calculate_stride(std::size_t columns){
-    constexpr std::size_t grids_per_row = alignment / sizeof(double);
+    constexpr std::size_t grids_per_row = kAlignment / sizeof(double);
     std::size_t remainder = columns % grids_per_row;
     if (remainder == 0){
       return columns;
