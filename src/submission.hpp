@@ -2,13 +2,13 @@
 
 #include <cstddef>
 #include <cstring>
-#include <algorithm>
 #include <vector>
 #include <stdexcept>
 #include <new>
 
 // Alignment target of 64 bytes based on the evaluator's -march=x86-64-v3
 static constexpr std::size_t alignment = 64;
+#include <limits>
 
 // I added an allocator to ensure alignment for the vector grid
 // I used Struct instead of Class as everything should be public anyways
@@ -31,6 +31,10 @@ struct AlignedAllocator{
   T* allocate (std::size_t n){
     if (n == 0) {
       return nullptr;
+    }
+    // Checks if n * sizeof(T) overflows size_t, which would cause less memory to be allocated then needed
+    if (n > std::numeric_limits<std::size_t>::max() / sizeof(T)){
+      throw std::bad_alloc();
     }
     return static_cast<T*>(::operator new(n * sizeof(T), std::align_val_t{Alignment}));
   }
@@ -59,7 +63,21 @@ private:
     if (remainder == 0){
       return columns;
     }
-    return columns + (grids_per_row - remainder);
+
+    std::size_t padding = grids_per_row - remainder;
+    if (columns > std::numeric_limits<std::size_t>::max() - padding){
+      throw std::overflow_error("Grid stride overflows size_t");
+    }
+
+    return columns + padding;
+  }
+
+  // Checks if rows * stride overflows size_t, which could cause std::vector to be smaller than needed
+  static std::size_t check_overflow(std::size_t rows, std::size_t stride){
+    if ((rows != 0) and (stride > std::numeric_limits<std::size_t>::max() / rows)){
+      throw std::overflow_error("Grid rows * stride overflows size_t");
+    }
+    return rows * stride;
   }
 
 public:
@@ -68,7 +86,7 @@ public:
     rows_(rows),
     cols_(cols),
     stride_(calculate_stride(cols)),
-    data_matrix(rows * stride_, 0.0)
+    data_matrix(check_overflow(rows,stride_), 0.0)
     {}
   
   // I chose 1D vector as it ensures data is contiguous for later optimization.
